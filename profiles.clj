@@ -1,6 +1,8 @@
 {:dev
  {:dependencies [[com.palletops/pallet "0.8.0-beta.7" :classifier "tests"]
                  [com.palletops/crates "0.1.0"]
+                 [org.cloudhoist/pallet-vmfest "0.3.0-alpha.3"]
+                 [org.clojars.tbatchelli/vboxjxpcom "4.2.4"]
                  [ch.qos.logback/logback-classic "1.0.9"]]
   :aliases {"live-test-up"
             ["pallet" "up" "--phases" "install,configure,test"]
