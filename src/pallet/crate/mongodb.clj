@@ -4,7 +4,7 @@
   (:use [pallet.crate :only [defplan assoc-settings defmulti-plan defmethod-plan
                              os-family get-settings]]
         [pallet.crate-install :only [install]]
-        [pallet.actions :only [package-source package remote-file]]
+        [pallet.actions :only [package-source package remote-file service]]
         [pallet.compute :only [os-hierarchy]]
         [clojure.pprint :only [pprint]]
         [pallet.utils :only [deep-merge]]))
@@ -43,13 +43,25 @@
      (os-family))
   :hierarchy #'os-hierarchy)
 
-(defmethod-plan install-settings :debian-base [version]
+(defmethod-plan install-settings :ubuntu [version]
   ;; use package-source
   {:install-strategy :package-source
    :packages (packages-from-version version)
    :package-source {:name "10gen"
                     :aptitude
                     {:url "http://downloads-distro.mongodb.org/repo/ubuntu-upstart/"
+                     :release "dist"
+                     :scopes ["10gen"]
+                     :key-id "7F0CEB10"
+                     :key-server "keyserver.ubuntu.com"}}})
+
+(defmethod-plan install-settings :debian-base [version]
+  ;; use package-source
+  {:install-strategy :package-source
+   :packages (packages-from-version version)
+   :package-source {:name "10gen"
+                    :aptitude
+                    {:url "http://downloads-distro.mongodb.org/repo/debian-sysvinit"
                      :release "dist"
                      :scopes ["10gen"]
                      :key-id "7F0CEB10"
@@ -88,4 +100,5 @@
     :install (plan-fn
               (install-mongodb :instance-id instance-id))
     :configure (plan-fn
-                (configure options))}))
+                (configure options))
+    :restart (plan-fn (service "mongodb" :action :restart))}))
