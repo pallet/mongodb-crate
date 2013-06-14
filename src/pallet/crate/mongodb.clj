@@ -101,4 +101,8 @@
               (install-mongodb :instance-id instance-id))
     :configure (plan-fn
                 (configure options))
-    :restart (plan-fn (service "mongodb" :action :restart))}))
+    :start (plan-fn (service "mongodb" :action :start))
+    :stop (plan-fn (service "mongodb" :action :stop))
+    :restart (plan-fn (service "mongodb" :action :restart)) }
+
+   :roles #{ :mongodb }))
