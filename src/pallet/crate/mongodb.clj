@@ -96,18 +96,31 @@
     (service "mongodb" :action :restart
              :if-flag "mongodb-config-changed")))
 
-(defn server-spec
-  [settings & {:keys [instance-id] :as options}]
-  (api/server-spec
-   :phases
-   {:settings (plan-fn
-               (build-settings settings (or options {})))
-    :install (plan-fn
-              (install-mongodb :instance-id instance-id))
-    :configure (plan-fn
-                (configure options))
-    :start (plan-fn (service "mongodb" :action :start))
-    :stop  (plan-fn (service "mongodb" :action :stop))
-    :restart (plan-fn (service "mongodb" :action :restart)) }
 
-   :roles #{ :mongodb }))
+(defn server-spec
+  "Define a server spec for a mongodb installation.
+
+To control the mongodb service, the server-spec has phases for start, stop and
+restart, as well as specific start-mongodb, stop-mongodb and
+restart-mongodb."
+
+  [settings & {:keys [instance-id] :as options}]
+
+  (let [service-fn (fn [kw]
+                     [[kw
+                       (plan-fn (service "mongodb" :action kw))]
+                      [(keyword (str (name kw) "-mongodb"))
+                       (plan-fn (service "mongodb" :action kw))]])]
+
+    (api/server-spec
+     :phases (merge 
+              {:settings (plan-fn
+                          (build-settings settings (or options {})))
+               :install (plan-fn
+                         (install-mongodb :instance-id instance-id))
+               :configure (plan-fn
+                           (configure options)) }
+
+              (into {} (mapcat service-fn [:start :stop :restart])))
+
+     :roles #{ :mongodb })))
