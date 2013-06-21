@@ -88,8 +88,13 @@
 
 (defplan configure [& opts]
   (let [config (:config (get-settings :mongodb))]
+
     (remote-file "/etc/mongodb.conf"
-                 :content (to-config-file config))))
+                 :content (to-config-file config)
+                 :flag-on-changed "mongodb-config-changed")
+
+    (service "mongodb" :action :restart
+             :if-flag "mongodb-config-changed")))
 
 (defn server-spec
   [settings & {:keys [instance-id] :as options}]
@@ -102,7 +107,7 @@
     :configure (plan-fn
                 (configure options))
     :start (plan-fn (service "mongodb" :action :start))
-    :stop (plan-fn (service "mongodb" :action :stop))
+    :stop  (plan-fn (service "mongodb" :action :stop))
     :restart (plan-fn (service "mongodb" :action :restart)) }
 
    :roles #{ :mongodb }))
