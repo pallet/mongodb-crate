@@ -74,22 +74,8 @@
 
 
 
-(defmethod service/supervisor-config-map [:mongodb :initd]
-  [_ {:keys [service-name] :as settings} options]
-  {:pre [service-name]}
-  (debugf "supervisor-config-map %s" settings)
-  {:service-name service-name})
-
-(defmethod service/supervisor-config-map [:mongodb :upstart]
-  [_ {:keys [service-name] :as settings} options]
-  {:pre [service-name]}
-  (debugf "supervisor-config-map %s" settings)
-  {:service-name service-name})
-
-
 (defn service-settings []
-  {;:supervisor :upstart
-   :service-name "mongodb" })
+  { :service-name "mongodb" })
 
 (defplan build-settings
   "Build the configuration settings by merging the user supplied ones
@@ -104,10 +90,7 @@
                         (service-settings)
                         settings
                         {:config config})]
-    (assoc-settings :mongodb settings {:instance-id instance-id})
-    (service/supervisor-config :mongodb settings
-                               (assoc options
-                                 :instance-id (or instance-id :mongodb)) )))
+    (assoc-settings :mongodb settings {:instance-id instance-id})))
 
 (defplan install-mongodb
   [& {:keys [instance-id]}]
