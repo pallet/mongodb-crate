@@ -1,10 +1,13 @@
 (ns pallet.crate.mongodb
   (:require [clojure.tools.logging :as log]
-            [pallet.api :refer [plan-fn] :as api])
+            [pallet.api :refer [plan-fn] :as api]
+            [pallet.crate.service :as service]
+            [pallet.crate.initd]
+            [clojure.tools.logging :refer [debugf]])
   (:use [pallet.crate :only [defplan assoc-settings defmulti-plan defmethod-plan
                              os-family get-settings]]
         [pallet.crate-install :only [install]]
-        [pallet.actions :only [package-source package remote-file service]]
+        [pallet.actions :only [package-source package remote-file]]
         [pallet.compute :only [os-hierarchy]]
         [clojure.pprint :only [pprint]]
         [pallet.utils :only [deep-merge]]))
@@ -53,7 +56,8 @@
                      :release "dist"
                      :scopes ["10gen"]
                      :key-id "7F0CEB10"
-                     :key-server "keyserver.ubuntu.com"}}})
+                     :key-server "keyserver.ubuntu.com"}}
+   :supervisor :upstart })
 
 (defmethod-plan install-settings :debian-base [version]
   ;; use package-source
@@ -65,7 +69,13 @@
                      :release "dist"
                      :scopes ["10gen"]
                      :key-id "7F0CEB10"
-                     :key-server "keyserver.ubuntu.com"}}})
+                     :key-server "keyserver.ubuntu.com"}}
+   :supervisor :initd })
+
+
+
+(defn service-settings []
+  { :service-name "mongodb" })
 
 (defplan build-settings
   "Build the configuration settings by merging the user supplied ones
@@ -77,9 +87,10 @@
         config (merge default-mongodb-conf config)
         settings (deep-merge {:version (or version :latest)}
                         install-settings
+                        (service-settings)
                         settings
                         {:config config})]
-    (assoc-settings :mongodb settings {:intance-id instance-id})))
+    (assoc-settings :mongodb settings {:instance-id instance-id})))
 
 (defplan install-mongodb
   [& {:keys [instance-id]}]
@@ -88,17 +99,43 @@
 
 (defplan configure [& opts]
   (let [config (:config (get-settings :mongodb))]
+
     (remote-file "/etc/mongodb.conf"
-                 :content (to-config-file config))))
+                 :content (to-config-file config)
+                 :flag-on-changed "mongodb-config-changed")
+
+    (service/service (get-settings :mongodb)
+                     {:action :restart
+                      :if-flag "mongodb-config-changed"
+                      })))
+
 
 (defn server-spec
+  "Define a server spec for a mongodb installation.
+
+To control the mongodb service, the server-spec has phases for start, stop and
+restart, as well as specific start-mongodb, stop-mongodb and
+restart-mongodb."
+
   [settings & {:keys [instance-id] :as options}]
-  (api/server-spec
-   :phases
-   {:settings (plan-fn
-               (build-settings settings (or options {})))
-    :install (plan-fn
-              (install-mongodb :instance-id instance-id))
-    :configure (plan-fn
-                (configure options))
-    :restart (plan-fn (service "mongodb" :action :restart))}))
+
+  (let [service-fn (fn [kw]
+                     [[kw
+                       (plan-fn (service/service (get-settings :mongodb {:instance-id instance-id})
+                                                 {:action kw}))]
+                      [(keyword (str (name kw) "-mongodb"))
+                       (plan-fn (service/service (get-settings :mongodb {:instance-id instance-id})
+                                                 {:action kw}))]])]
+
+    (api/server-spec
+     :phases (merge 
+              {:settings (plan-fn
+                          (build-settings settings (or options {})))
+               :install (plan-fn
+                         (install-mongodb :instance-id instance-id))
+               :configure (plan-fn
+                           (configure options)) }
+
+              (into {} (mapcat service-fn [:start :stop :restart])))
+
+     :roles #{ :mongodb })))
