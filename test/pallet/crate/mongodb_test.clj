@@ -1,15 +1,64 @@
 (ns pallet.crate.mongodb-test
   (:require
+   [clojure.test :refer :all]
    [pallet.crate.mongodb :as mongodb]
-   [pallet.actions :refer [package-manager]]
+   [pallet.actions :refer [exec-checked-script package-manager plan-when]]
    [pallet.algo.fsmop :refer [complete?]]
-   [pallet.api :refer [plan-fn server-spec]]
+   [pallet.build-actions :refer [build-actions]]
+   [pallet.api :refer [execute-and-flag-metadata plan-fn server-spec]]
    [pallet.crate.network-service :refer [wait-for-port-listen]]
-   [clojure.test :as test]))
+   [pallet.crate.etc-hosts :refer [set-hostname]]
+   [pallet.crate.upstart :as upstart]
+   [pallet.stevedore :refer [fragment]]))
+
+(deftest minimal-test
+  (is (build-actions {}
+        (mongodb/settings {} {})
+        (mongodb/install {})
+        (mongodb/configure {})
+        (mongodb/service :action :restart))))
 
 (def live-test-spec
   (server-spec
-   :extends [(mongodb/server-spec {:config {:verbose "true"
-                                             :vvvv "true"}} )]
+   :extends [(mongodb/server-spec
+              {:config {:verbose "true"
+                        :vvvv "true"
+                        :nohttpinterface false}} )]
    :phases {:install (plan-fn (package-manager :update))
             :test (plan-fn (wait-for-port-listen 28017))}))
+
+(def replica-test-spec
+  (server-spec
+   :extends [(upstart/server-spec {})
+             (mongodb/server-spec
+              {:config {:replSet "rs1"}} )]
+   :phases {:install (plan-fn
+                       (package-manager :update)
+                       (set-hostname :update-etc-hosts false)
+                       (plan-when
+                           (fragment
+                            (pipe ("ps ax")("grep" dhclient)("grep" -v grep)))
+                         (exec-checked-script
+                          "Propagate hostname to DHCP"
+                          ("service" networking restart))))
+            :test (plan-fn (wait-for-port-listen 27017))}
+   :phases-meta {:install (execute-and-flag-metadata :install)}))
+
+(def arbiter-test-spec
+  (server-spec
+   :extends [(upstart/server-spec {})
+             (mongodb/server-spec
+              {:config {:replSet "rs1" :port 30000}
+               :arbiter true})]
+   :phases {:install (plan-fn
+                       (package-manager :update)
+                       (set-hostname :update-etc-hosts false)
+                       (plan-when
+                           (fragment
+                            (pipe ("ps ax")("grep" dhclient)
+                                  ("grep" -v grep)))
+                         (exec-checked-script
+                          "Propogate hostname to dhcp"
+                          ("service" networking restart))))
+            :test (plan-fn (wait-for-port-listen 30000))}
+   :phases-meta {:install (execute-and-flag-metadata :install)}))
