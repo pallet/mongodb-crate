@@ -22,6 +22,8 @@
 (def default-version "2.4.6")
 (def facility :mongodb)
 
+(def mongo-config-changed-flag "MONGO-CONFIG-CHANGED")
+
 (def default-mongodb-conf
   ;; from http://docs.mongodb.org/manual/reference/configuration-options/
   {:dbpath "/var/lib/mongodb"
@@ -83,12 +85,12 @@
    :install-strategy :package-source
    :packages ["mongo-10gen" "mongo-10gen-server"]
    :package-source
-   {:name "10gen"
+   {:name "mongodb"
     :yum
     {:url "http://downloads-distro.mongodb.org/repo/redhat/os/x86_64"
      :gpg-check 0
      :name "MongoDB Repository"}}
-   :conf-file "/etc/mongodb.conf"})
+   :conf-file "/etc/mongod.conf"})
 
 
 (defn to-config-file
@@ -123,7 +125,8 @@
         (get-settings facility {:instance-id instance-id})]
     (remote-file conf-file
                  :content (to-config-file config)
-                 :owner user)))
+                 :owner user
+                 :flag-on-changed mongo-config-changed-flag)))
 
 (defmacro file-ns [] (name (ns-name *ns*)))
 
@@ -217,7 +220,11 @@
   (let [{:keys [supervision-options] :as settings}
         (get-settings facility {:instance-id instance-id})]
     (service/service settings (merge supervision-options
-                                    (dissoc options :instance-id)))))
+                                     (dissoc options :instance-id)))))
+
+(defplan restart-if-changed
+  [& {:keys [instance-id] :as options}]
+  (service :instance-id instance-id :if-flag mongo-config-changed-flag))
 
 (defn server-spec
   "Return a server spec for MongoDB.  Keys under the :config settings
@@ -225,30 +232,33 @@ will be written to the mongo .conf file.  To use a replica set,
 specify a replica set name in the :replSet config key. Specify
 `:arbiter true` for an arbiter node (which is distinguished by the
 arbiter role.)"
-  [{:keys [arbiter] :as settings} & {:keys [instance-id] :as options}]
-  (api/server-spec
-   ;; TODO - needs an adjust-replica-set to run on resize of
-   ;; replica set
-   :phases
-   (merge
-    {:settings (plan-fn
-                (pallet.crate.mongodb/settings
-                 settings {:instance-id instance-id}))
-     :install (plan-fn
-               (install {:instance-id instance-id}))
-     :configure (plan-fn
-                 (configure {:instance-id instance-id}))
-     :init-replica-set (vary-meta
-                        (plan-fn
-                         (init-replica-set {:instance-id instance-id}))
-                        merge
-                        (execute-and-flag-metadata ::replica-set))}
-    (service-phases facility options service))
-   :default-phases [:install :configure :init-replica-set]
-   :roles (set
-           (filter identity
-                   [(when-let [replica-set (-> settings :config :replSet)]
-                      (role-for-replica-set replica-set))
-                    (if arbiter
-                      ::arbiter
-                      ::data)]))))
+  [{:keys [arbiter instance-id] :as settings}]
+  (let [settings (dissoc settings :instance-id)]
+    (api/server-spec
+     ;; TODO - needs an adjust-replica-set to run on resize of
+     ;; replica set
+     :phases
+     (merge
+      {:settings (plan-fn
+                   (pallet.crate.mongodb/settings
+                    settings {:instance-id instance-id}))
+       :install (plan-fn
+                  (install {:instance-id instance-id}))
+       :configure (plan-fn
+                    (configure {:instance-id instance-id}))
+       :restart-if-chnaged (plan-fn
+                             (restart-if-changed :instance-id instance-id))
+       :init-replica-set (vary-meta
+                          (plan-fn
+                            (init-replica-set {:instance-id instance-id}))
+                          merge
+                          (execute-and-flag-metadata ::replica-set))}
+      (service-phases facility {:instance-id instance-id} service))
+     :default-phases [:install :configure :restart-if-changed :init-replica-set]
+     :roles (set
+             (filter identity
+                     [(when-let [replica-set (-> settings :config :replSet)]
+                        (role-for-replica-set replica-set))
+                      (if arbiter
+                        ::arbiter
+                        ::data)])))))
