@@ -224,9 +224,10 @@
     (service/service settings (merge supervision-options
                                      (dissoc options :instance-id)))))
 
-(defplan restart-if-changed
+(defplan ensure-service
   [& {:keys [instance-id] :as options}]
-  (service :instance-id instance-id :if-flag mongo-config-changed-flag))
+  (service :instance-id instance-id :if-flag mongo-config-changed-flag)
+  (service :instance-id instance-id :if-stopped true))
 
 (defn server-spec
   "Return a server spec for MongoDB.  Keys under the :config settings
@@ -249,7 +250,7 @@ arbiter role.)"
        :configure (plan-fn
                     (configure {:instance-id instance-id}))
        :restart-if-changed (plan-fn
-                             (restart-if-changed :instance-id instance-id))
+                             (ensure-service :instance-id instance-id))
        :init-replica-set (vary-meta
                           (plan-fn
                             (init-replica-set {:instance-id instance-id}))
