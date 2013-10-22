@@ -248,7 +248,7 @@ arbiter role.)"
                   (install {:instance-id instance-id}))
        :configure (plan-fn
                     (configure {:instance-id instance-id}))
-       :restart-if-chnaged (plan-fn
+       :restart-if-changed (plan-fn
                              (restart-if-changed :instance-id instance-id))
        :init-replica-set (vary-meta
                           (plan-fn
