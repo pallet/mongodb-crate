@@ -118,8 +118,7 @@
 
 (defplan install
   [{:keys [instance-id]}]
-  (let [settings (get-settings facility {:instance-id instance-id})]
-    (crate-install/install facility instance-id)))
+  (crate-install/install facility instance-id))
 
 (defplan configure
   [{:keys [instance-id] :as options}]
