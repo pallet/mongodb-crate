@@ -157,22 +157,36 @@
   }
 ")
 
+(defn data-nodes
+  "Return a sequence of mongo data nodes."
+  [{:keys [config] :as settings}]
+  (nodes-with-role ::data))
+
+(defn replica-set-nodes
+  "Return a tuple of [data-targets arbiter-target] for the specified
+  instance-id"
+  [{:keys [config] :as settings}]
+  (let [replica-set (:replSet config)
+        role-kw (role-for-replica-set replica-set)]
+    (let [replica-nodes (nodes-with-role role-kw)
+          arbiter-nodes (nodes-with-role ::arbiter)
+          arbiter-node (first (intersection (set replica-nodes)
+                                            (set arbiter-nodes)))
+          data-nodes (disj (set replica-nodes) arbiter-node)]
+      [data-nodes arbiter-node])))
+
 (defplan init-replica-set
   [{:keys [instance-id] :as opts}]
-  (let [{:keys [config]}
+  (let [{:keys [config] :as settings}
         (get-settings facility {:instance-id instance-id})
         replica-set (:replSet config)
         role-kw (role-for-replica-set replica-set)]
     (debugf "replica-set %s" replica-set)
+    (assert
+     replica-set
+     "init-replica-set called on settings with no :replica-set defined.")
     (when replica-set
-      (assert
-       replica-set
-       "init-replica-set called on settings with no :replica-set defined.")
-      (let [replica-nodes (nodes-with-role role-kw)
-            arbiter-nodes (nodes-with-role ::arbiter)
-            arbiter-node (first (intersection (set replica-nodes)
-                                              (set arbiter-nodes)))
-            data-nodes (disj (set replica-nodes) arbiter-node)]
+      (let [[data-nodes arbiter-node] (replica-set-nodes settings)]
         (debugf "init-replica-set arbiter-node %s" (boolean arbiter-node))
         (on-one-node [role-kw ::data]
           (remote-file
