@@ -78,7 +78,7 @@
   [os os-version version]
   {:config (merge default-mongodb-conf
                   {:dbpath "/var/lib/mongo"
-                   :logpath "/var/log/mongo/mongodb.log"
+                   :logpath "/var/log/mongo/mongod.log"
                    :pidfilepath "/var/run/mongo/mongod.pid"
                    :fork true})
    :user "mongod"
