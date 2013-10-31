@@ -10,7 +10,7 @@ A [pallet](http://palletops.com/) crate to install and configure
 ### Dependency Information
 
 ```clj
-:dependencies [[com.palletops/mongodb-crate "0.8.0-SNAPSHOT"]]
+:dependencies [[com.palletops/mongodb-crate "0.8.0-alpha.1"]]
 ```
 
 ### Releases
@@ -21,12 +21,12 @@ A [pallet](http://palletops.com/) crate to install and configure
 </thead>
 <tbody>
   <tr>
-    <th>0.8.0-RC.3</th>
-    <td>0.8.0-SNAPSHOT</td>
+    <th>0.8.0-RC.4</th>
+    <td>0.8.0-alpha.1</td>
     <td>clojars</td>
     <td>com.palletops</td>
-    <td><a href='https://github.com/pallet/mongodb-crate/blob/0.8.0-SNAPSHOT/ReleaseNotes.md'>Release Notes</a></td>
-    <td><a href='https://github.com/pallet/mongodb-crate/blob/0.8.0-SNAPSHOT/'>Source</a></td>
+    <td><a href='https://github.com/pallet/mongodb-crate/blob/0.8.0-alpha.1/ReleaseNotes.md'>Release Notes</a></td>
+    <td><a href='https://github.com/pallet/mongodb-crate/blob/0.8.0-alpha.1/'>Source</a></td>
   </tr>
 </tbody>
 </table>
