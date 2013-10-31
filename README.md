@@ -21,7 +21,7 @@ A [pallet](http://palletops.com/) crate to install and configure
 </thead>
 <tbody>
   <tr>
-    <th>0.8.0-RC.3</th>
+    <th>0.8.0-RC.4</th>
     <td>0.8.0-SNAPSHOT</td>
     <td>clojars</td>
     <td>com.palletops</td>
