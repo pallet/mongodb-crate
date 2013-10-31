@@ -4,7 +4,11 @@
                  [com.palletops/pallet-vmfest "0.3.0-beta.2"]
                  [ch.qos.logback/logback-classic "1.0.9"]]
   :plugins [[com.palletops/pallet-lein "0.8.0-alpha.1"]
-            [com.palletops/lein-pallet-crate "0.1.0"]]
+            [com.palletops/lein-pallet-crate "0.1.0"]
+            [lein-set-version "0.3.0"]
+            [lein-resource "0.3.2"]
+            [codox/codox.leiningen "0.6.4"]
+            [lein-marginalia "0.7.1"]]
   :aliases {"live-test-up"
             ["pallet" "up" "--phases" "install,configure,test"]
             "live-test-down" ["pallet" "down"]
@@ -31,5 +35,6 @@
                  "doc" ["do" "codox," "marg"]}
        }
  :release
- {:set-version
+ {:plugins [[lein-set-version "0.3.0"]]
+  :set-version
   {:updates [{:path "README.md" :no-snapshot true}]}}}
