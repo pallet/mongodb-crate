@@ -25,10 +25,17 @@
 (defn to-config-file
   "Generate the .config file contents out of a map of config option, value"
   [config]
-  (apply str
-         (map (fn [[k v]]
-                (format "%s=%s\n" (name k) v))
-              config)))
+  (letfn [(format-simple-kv [k v]
+            (format "%s=%s\n" (name k) v))
+          (format-mutivalue-kvs [k vs]
+            (map (fn [v] (format-simple-kv k v) ) vs))]
+    (apply str
+           (mapcat (fn [[k v]]
+                     (if (vector? v)
+                       (format-mutivalue-kvs k v)
+                       (format-simple-kv k v)))
+                   config))))
+
 
 (def packages-version
   {:latest ["mongodb-10gen"]
