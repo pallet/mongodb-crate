@@ -85,6 +85,11 @@ lein with-profile +vmfest pallet up --selectors ubuntu-13
 lein with-profile +vmfest pallet down --selectors ubuntu-13
 ```
 
+## MMS
+
+The `pallet.crate.mongodb.mms` namespace contains support for
+installing the MMS agent.
+
 ## License
 
 Copyright (C) 2012, 2013 Hugo Duncan
