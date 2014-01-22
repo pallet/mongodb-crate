@@ -43,3 +43,8 @@ For example, to run the live test on VMFest, using Ubuntu 13:
 lein with-profile +vmfest pallet up --selectors ubuntu-13
 lein with-profile +vmfest pallet down --selectors ubuntu-13
 ```
+
+## MMS
+
+The `pallet.crate.mongodb.mms` namespace contains support for
+installing the MMS agent.
