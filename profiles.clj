@@ -22,7 +22,7 @@
   :test-selectors {:default (complement :live-test)
                    :live-test :live-test
                    :all (constantly true)}}
- :doc {:dependencies [[com.palletops/pallet-codox "0.1.0-SNAPSHOT"]]
+ :doc {:dependencies [[com.palletops/pallet-codox "0.1.0"]]
        :plugins [[codox/codox.leiningen "0.6.4"]
                  [lein-marginalia "0.7.1"]]
        :codox {:writer codox-md.writer/write-docs
