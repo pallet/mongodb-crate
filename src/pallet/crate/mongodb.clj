@@ -149,6 +149,26 @@
          ":"
          port)))
 
+(def initiate-script
+  "print('Current replica set status')
+  printjson(rs.status())
+  if (rs.status().ok != 1) {
+    report(rs.initiate({
+        \"_id\" : \"%s\",
+        \"members\" : [{\"_id\" : 0,\"host\" : \"%s\"}]}),
+          'initiate')
+  }
+  n=20
+  while (n > 0 &&
+         (rs.status().ok == 0 ||
+          rs.status().myState != 1)) {
+    print('.')
+    sleep(2000)
+    n=n-1
+  }
+  print('Final replica set status')
+  report(rs.status(), 'status')")
+
 (def report-fn
   "report = function(v, s) {
     print(s)
@@ -156,6 +176,17 @@
     if (v.ok == 0) { throw new Error(s + ': ' + v.errmsg) }
   }
 ")
+
+(def in-rs-fn
+  "in_rs = function(i) {
+   f = function (o) {if (o.host == i) return true; else return false; }
+   return rs.conf().members.filter(f).length == 1
+  }")
+
+(def cond-add-fn
+  "cond_add = function(i, arb) {
+   if (! in_rs(i)) { report(rs.add(i, arb), 'add')}
+  }")
 
 (defn data-nodes
   "Return a sequence of mongo data nodes."
@@ -191,44 +222,60 @@
         (on-one-node [role-kw ::data]
           (remote-file
            "init-replica-set.js"
-           :content (str report-fn "
-  print('Current replica set status')
-  printjson(rs.status())
-  if (rs.status().ok != 1) { report(rs.initiate(), 'initiate') }
-  n=20
-  while (n > 0 &&
-         (rs.status().ok == 0 ||
-          rs.status().myState != 1)) {
-    print('.')
-    sleep(2000)
-    n=n-1
-  }
-  print('Final replica set status')
-  report(rs.status(), 'status')" \newline))
+           :content (str report-fn
+                         (format initiate-script replica-set
+                                 (ip-port (target) instance-id))
+                         \newline))
           (exec-checked-script
            (str "Initialise replica set " replica-set)
-           ("mongo" "--port" ~(:port config) "init-replica-set.js"))
+           ("mongo" "--port" ~(:port config) "init-replica-set.js")))))))
 
-          (doseq [target (remove #(= (target) %) data-nodes)]
-            (exec
+(defplan update-replica-set
+  "Ensure that all mongo nodes are registered in the replica set."
+  [{:keys [instance-id] :as opts}]
+  (let [{:keys [config] :as settings}
+        (get-settings facility {:instance-id instance-id})
+        replica-set (:replSet config)
+        role-kw (role-for-replica-set replica-set)]
+    (debugf "replica-set %s" replica-set)
+    (assert
+     replica-set
+     "update-replica-set called on settings with no :replica-set defined.")
+    (when replica-set
+      (let [[data-nodes arbiter-node] (replica-set-nodes settings)]
+        (debugf "update-replica-set arbiter-node %s" (boolean arbiter-node))
+        (doseq [target (remove #(= (target) %) data-nodes)]
+          (exec
              {:language "js" :interpreter "/usr/bin/mongo"
               :interpreter-args ["--port" (:port config)]}
              (format
-              "%s
+              "if (rs.status().myState == 1) { /* master only */
+               %s
+               %s
+               %s
                printjson(rs.status())
-               report(rs.add(\"%s\"), 'add')"
+               cond_add(\"%s\")
+               }"
               report-fn
+              in-rs-fn
+              cond-add-fn
               (ip-port target instance-id))))
           (when arbiter-node
             (exec
              {:language "js" :interpreter "/usr/bin/mongo"
               :interpreter-args ["--port" (:port config)]}
              (format
-              "%s
+              "if (rs.status().myState == 1) { /* master only */
+               %s
+               %s
+               %s
                printjson(rs.status())
-               report(rs.add(\"%s\", true), 'addArb') "
+               cond_add(\"%s\", true)
+               }"
               report-fn
-              (ip-port arbiter-node instance-id)))))))))
+              in-rs-fn
+              cond-add-fn
+              (ip-port arbiter-node instance-id))))))))
 
 (defplan service
   [& {:keys [instance-id] :as options}]
@@ -239,8 +286,10 @@
 
 (defplan ensure-service
   [& {:keys [instance-id] :as options}]
-  (service :instance-id instance-id :if-flag mongo-config-changed-flag)
-  (service :instance-id instance-id :if-stopped true))
+  (service :instance-id instance-id :if-stopped true)
+  (service :instance-id instance-id
+           :action :reload
+           :if-flag mongo-config-changed-flag))
 
 (defn server-spec
   "Return a server spec for MongoDB.  Keys under the :config settings
@@ -256,21 +305,24 @@ arbiter role.)"
      :phases
      (merge
       {:settings (plan-fn
-                   (pallet.crate.mongodb/settings
-                    settings {:instance-id instance-id}))
+                  (pallet.crate.mongodb/settings
+                   settings {:instance-id instance-id}))
        :install (plan-fn
-                  (install {:instance-id instance-id}))
+                 (install {:instance-id instance-id}))
        :configure (plan-fn
-                    (configure {:instance-id instance-id}))
+                   (configure {:instance-id instance-id}))
        :restart-if-changed (plan-fn
-                             (ensure-service :instance-id instance-id))
+                            (ensure-service :instance-id instance-id))
        :init-replica-set (vary-meta
                           (plan-fn
-                            (init-replica-set {:instance-id instance-id}))
+                           (init-replica-set {:instance-id instance-id}))
                           merge
-                          (execute-and-flag-metadata ::replica-set))}
+                          (execute-and-flag-metadata ::replica-set))
+       :update-replica-set (plan-fn
+                            (update-replica-set {:instance-id instance-id}))}
       (service-phases facility {:instance-id instance-id} service))
-     :default-phases [:install :configure :restart-if-changed :init-replica-set]
+     :default-phases [:install :configure :restart-if-changed :init-replica-set
+                      :update-replica-set]
      :roles (set
              (filter identity
                      [(when-let [replica-set (-> settings :config :replSet)]
