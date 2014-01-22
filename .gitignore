@@ -3,6 +3,9 @@
 /classes
 /checkouts
 /logs
+/doc
+doc-src/VERSIONS.md
+doc-src/INTRO.md
 pom.xml
 pom.xml.asc
 *.jar
