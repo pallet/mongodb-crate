@@ -29,20 +29,20 @@
       </div>
     </div>
       <div id="header">
-        <h1><a href="http://palletops.com"><span class="project-title">Mongodb-crate 0.8.0-alpha.1 API documentation</span></a></h1>
+        <h1><a href="http://palletops.com"><span class="project-title">Mongodb-crate 0.8.0-alpha.2 API documentation</span></a></h1>
       </div>
     </header>
     <navigation>
       <div id="namespaces" class="sidebar">
         <h3>Namespaces</h3>
         <ul class="ns-links">
-          <li class="ns-list"><a class="ns-link ns-name" href="pallet.crate.mongodb.html">pallet.crate.mongodb</a></li>
+          <li class="ns-list"><a class="ns-link ns-name" href="pallet.crate.mongodb.html">pallet.crate.mongodb</a></li><li class="ns-list"><a class="ns-link ns-name" href="pallet.crate.mongodb.mms.html">pallet.crate.mongodb.mms</a></li>
         </ul>
       </div>
       <div id="vars" class="sidebar">
         <h3>Public Vars</h3>
         <ul class="ns-var-links">
-          <li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-data-nodes">data-nodes</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-replica-set-nodes">replica-set-nodes</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-role-for-replica-set">role-for-replica-set</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-server-spec">server-spec</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-settings">settings</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-to-config-file">to-config-file</a></li>
+          <li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-data-nodes">data-nodes</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-replica-set-nodes">replica-set-nodes</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-role-for-replica-set">role-for-replica-set</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-server-spec">server-spec</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-settings">settings</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-to-config-file">to-config-file</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="pallet.crate.mongodb.html#var-update-replica-set">update-replica-set</a></li>
         </ul>
       </div>
     </navigation>
@@ -53,7 +53,7 @@
 </div>
         <div class="ns-vars">
           <div class="public">
-            <h3><a id="var-data-nodes" class="source var-name" href="https://github.com/pallet/mongodb-crate/blob/develop/src/pallet/crate/mongodb.clj#L160">data-nodes</a></h3>
+            <h3><a id="var-data-nodes" class="source var-name" href="https://github.com/pallet/mongodb-crate/blob/develop/src/pallet/crate/mongodb.clj#L191">data-nodes</a></h3>
             <h4 class="var-type fn" id="var-type">fn</h4>
             <div class="usage">[{:keys [config], :as settings}]</div>
             
@@ -61,7 +61,7 @@
             <div class="doc"><p>Return a sequence of mongo data nodes.</p>
 </div>
           </div><div class="public">
-            <h3><a id="var-replica-set-nodes" class="source var-name" href="https://github.com/pallet/mongodb-crate/blob/develop/src/pallet/crate/mongodb.clj#L165">replica-set-nodes</a></h3>
+            <h3><a id="var-replica-set-nodes" class="source var-name" href="https://github.com/pallet/mongodb-crate/blob/develop/src/pallet/crate/mongodb.clj#L196">replica-set-nodes</a></h3>
             <h4 class="var-type fn" id="var-type">fn</h4>
             <div class="usage">[{:keys [config], :as settings}]</div>
             
@@ -78,7 +78,7 @@ instance-id</p>
             <div class="doc"><p>Return a role keyword for the specified replica-set name</p>
 </div>
           </div><div class="public">
-            <h3><a id="var-server-spec" class="source var-name" href="https://github.com/pallet/mongodb-crate/blob/develop/src/pallet/crate/mongodb.clj#L245">server-spec</a></h3>
+            <h3><a id="var-server-spec" class="source var-name" href="https://github.com/pallet/mongodb-crate/blob/develop/src/pallet/crate/mongodb.clj#L294">server-spec</a></h3>
             <h4 class="var-type fn" id="var-type">fn</h4>
             <div class="usage">[{:keys [arbiter instance-id], :as settings}]</div>
             
@@ -106,6 +106,14 @@ for MongoDB</p>
             
             
             <div class="doc"><p>Generate the .config file contents out of a map of config option, value</p>
+</div>
+          </div><div class="public">
+            <h3><a id="var-update-replica-set" class="source var-name" href="https://github.com/pallet/mongodb-crate/blob/develop/src/pallet/crate/mongodb.clj#L233">update-replica-set</a></h3>
+            <h4 class="var-type fn" id="var-type">fn</h4>
+            <div class="usage">[{:keys [instance-id], :as opts}]</div>
+            
+            
+            <div class="doc"><p>Ensure that all mongo nodes are registered in the replica set.</p>
 </div>
           </div>
         </div>

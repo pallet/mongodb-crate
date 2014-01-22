@@ -3028,8 +3028,8 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>com.palletops/mongodb-crate -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">com.palletops/mongodb-crate</h1><h2 class="project-version">0.8.0-alpha.1</h2><br /><p>Pallet crate to install, configure and use mongodb</p>
-</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.4.0</td></tr><tr><td class="dep-name">com.palletops/pallet</td><td class="dotted"><hr /></td><td class="dep-version">0.8.0-RC.4</td></tr><tr><td class="dep-name">com.palletops/upstart-crate</td><td class="dotted"><hr /></td><td class="dep-version">0.8.0-alpha.2</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#pallet.crate.mongodb">pallet.crate.mongodb</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#pallet.crate.mongodb" name="pallet.crate.mongodb"><h1 class="project-name">pallet.crate.mongodb</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</script><title>com.palletops/mongodb-crate -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name">com.palletops/mongodb-crate</h1><h2 class="project-version">0.8.0-alpha.2</h2><br /><p>Pallet crate to install, configure and use mongodb</p>
+</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.4.0</td></tr><tr><td class="dep-name">com.palletops/pallet</td><td class="dotted"><hr /></td><td class="dep-version">0.8.0-RC.7</td></tr><tr><td class="dep-name">com.palletops/upstart-crate</td><td class="dotted"><hr /></td><td class="dep-version">0.8.0-alpha.2</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#pallet.crate.mongodb">pallet.crate.mongodb</a></li><li><a href="#pallet.crate.mongodb.mms">pallet.crate.mongodb.mms</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#pallet.crate.mongodb" name="pallet.crate.mongodb"><h1 class="project-name">pallet.crate.mongodb</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns pallet.crate.mongodb
   (:require
    [clojure.pprint :refer [pprint]]
@@ -3041,8 +3041,8 @@ net.brehaut.ClojureTools = (function (SH) {
    [pallet.api :as api :refer [execute-and-flag-metadata plan-fn]]
    [pallet.compute :refer [os-hierarchy]]
    [pallet.crate :refer [defplan assoc-settings defmulti-plan defmethod-plan
-                         get-node-settings get-settings nodes-with-role
-                         os-family service-phases target]]
+                         get-node-settings get-settings
+                         os-family service-phases target targets-with-role]]
    [pallet.crate-install :as crate-install]
    [pallet.crate.service :as service]
    [pallet.crate.upstart]
@@ -3161,23 +3161,51 @@ net.brehaut.ClojureTools = (function (SH) {
              (primary-ip (:node target)))
          &quot;:&quot;
          port)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def initiate-script
+  &quot;print('Current replica set status')
+  printjson(rs.status())
+  if (rs.status().ok != 1) {
+    report(rs.initiate({
+        \&quot;_id\&quot; : \&quot;%s\&quot;,
+        \&quot;members\&quot; : [{\&quot;_id\&quot; : 0,\&quot;host\&quot; : \&quot;%s\&quot;}]}),
+          'initiate')
+  }
+  n=20
+  while (n &gt; 0 &amp;&amp;
+         (rs.status().ok == 0 ||
+          rs.status().myState != 1)) {
+    print('.')
+    sleep(2000)
+    n=n-1
+  }
+  print('Final replica set status')
+  report(rs.status(), 'status')&quot;)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(def report-fn
   &quot;report = function(v, s) {
     print(s)
     printjson(v)
     if (v.ok == 0) { throw new Error(s + ': ' + v.errmsg) }
   }
-&quot;)</pre></td></tr><tr><td class="docs"><p>Return a sequence of mongo data nodes.</p>
+&quot;)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def in-rs-fn
+  &quot;in_rs = function(i) {
+   f = function (o) {if (o.host == i) return true; else return false; }
+   return rs.conf().members.filter(f).length == 1
+  }&quot;)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def cond-add-fn
+  &quot;cond_add = function(i, arb) {
+   if (! in_rs(i)) { report(rs.add(i, arb), 'add')}
+  }&quot;)</pre></td></tr><tr><td class="docs"><p>Return a sequence of mongo data nodes.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn data-nodes
   [{:keys [config] :as settings}]
-  (nodes-with-role ::data))</pre></td></tr><tr><td class="docs"><p>Return a tuple of [data-targets arbiter-target] for the specified
+  (targets-with-role ::data))</pre></td></tr><tr><td class="docs"><p>Return a tuple of [data-targets arbiter-target] for the specified
   instance-id</p>
 </td><td class="codes"><pre class="brush: clojure">(defn replica-set-nodes
   [{:keys [config] :as settings}]
   (let [replica-set (:replSet config)
         role-kw (role-for-replica-set replica-set)]
-    (let [replica-nodes (nodes-with-role role-kw)
-          arbiter-nodes (nodes-with-role ::arbiter)
+    (let [replica-nodes (targets-with-role role-kw)
+          arbiter-nodes (targets-with-role ::arbiter)
           arbiter-node (first (intersection (set replica-nodes)
                                             (set arbiter-nodes)))
           data-nodes (disj (set replica-nodes) arbiter-node)]
@@ -3198,43 +3226,58 @@ net.brehaut.ClojureTools = (function (SH) {
         (on-one-node [role-kw ::data]
           (remote-file
            &quot;init-replica-set.js&quot;
-           :content (str report-fn &quot;
-  print('Current replica set status')
-  printjson(rs.status())
-  if (rs.status().ok != 1) { report(rs.initiate(), 'initiate') }
-  n=20
-  while (n &gt; 0 &amp;&amp;
-         (rs.status().ok == 0 ||
-          rs.status().myState != 1)) {
-    print('.')
-    sleep(2000)
-    n=n-1
-  }
-  print('Final replica set status')
-  report(rs.status(), 'status')&quot; \newline))
+           :content (str report-fn
+                         (format initiate-script replica-set
+                                 (ip-port (target) instance-id))
+                         \newline))
           (exec-checked-script
            (str &quot;Initialise replica set &quot; replica-set)
-           (&quot;mongo&quot; &quot;--port&quot; ~(:port config) &quot;init-replica-set.js&quot;))
-          (doseq [target (remove #(= (target) %) data-nodes)]
-            (exec
+           (&quot;mongo&quot; &quot;--port&quot; ~(:port config) &quot;init-replica-set.js&quot;)))))))</pre></td></tr><tr><td class="docs"><p>Ensure that all mongo nodes are registered in the replica set.</p>
+</td><td class="codes"><pre class="brush: clojure">(defplan update-replica-set
+  [{:keys [instance-id] :as opts}]
+  (let [{:keys [config] :as settings}
+        (get-settings facility {:instance-id instance-id})
+        replica-set (:replSet config)
+        role-kw (role-for-replica-set replica-set)]
+    (debugf &quot;replica-set %s&quot; replica-set)
+    (assert
+     replica-set
+     &quot;update-replica-set called on settings with no :replica-set defined.&quot;)
+    (when replica-set
+      (let [[data-nodes arbiter-node] (replica-set-nodes settings)]
+        (debugf &quot;update-replica-set arbiter-node %s&quot; (boolean arbiter-node))
+        (doseq [target (remove #(= (target) %) data-nodes)]
+          (exec
              {:language &quot;js&quot; :interpreter &quot;/usr/bin/mongo&quot;
               :interpreter-args [&quot;--port&quot; (:port config)]}
              (format
-              &quot;%s
+              &quot;if (rs.status().myState == 1) { /* master only */
+               %s
+               %s
+               %s
                printjson(rs.status())
-               report(rs.add(\&quot;%s\&quot;), 'add')&quot;
+               cond_add(\&quot;%s\&quot;)
+               }&quot;
               report-fn
+              in-rs-fn
+              cond-add-fn
               (ip-port target instance-id))))
           (when arbiter-node
             (exec
              {:language &quot;js&quot; :interpreter &quot;/usr/bin/mongo&quot;
               :interpreter-args [&quot;--port&quot; (:port config)]}
              (format
-              &quot;%s
+              &quot;if (rs.status().myState == 1) { /* master only */
+               %s
+               %s
+               %s
                printjson(rs.status())
-               report(rs.add(\&quot;%s\&quot;, true), 'addArb') &quot;
+               cond_add(\&quot;%s\&quot;, true)
+               }&quot;
               report-fn
-              (ip-port arbiter-node instance-id)))))))))</pre></td></tr><tr><td class="docs">
+              in-rs-fn
+              cond-add-fn
+              (ip-port arbiter-node instance-id))))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defplan service
   [&amp; {:keys [instance-id] :as options}]
   (let [{:keys [supervision-options] :as settings}
@@ -3243,8 +3286,10 @@ net.brehaut.ClojureTools = (function (SH) {
                                      (dissoc options :instance-id)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defplan ensure-service
   [&amp; {:keys [instance-id] :as options}]
-  (service :instance-id instance-id :if-flag mongo-config-changed-flag)
-  (service :instance-id instance-id :if-stopped true))</pre></td></tr><tr><td class="docs"><p>Return a server spec for MongoDB.  Keys under the :config settings
+  (service :instance-id instance-id :if-stopped true)
+  (service :instance-id instance-id
+           :action :reload
+           :if-flag mongo-config-changed-flag))</pre></td></tr><tr><td class="docs"><p>Return a server spec for MongoDB.  Keys under the :config settings
 will be written to the mongo .conf file.  To use a replica set,
 specify a replica set name in the :replSet config key. Specify
 <code>:arbiter true</code> for an arbiter node (which is distinguished by the
@@ -3258,26 +3303,192 @@ arbiter role.)</p>
      :phases
      (merge
       {:settings (plan-fn
-                   (pallet.crate.mongodb/settings
-                    settings {:instance-id instance-id}))
+                  (pallet.crate.mongodb/settings
+                   settings {:instance-id instance-id}))
        :install (plan-fn
-                  (install {:instance-id instance-id}))
+                 (install {:instance-id instance-id}))
        :configure (plan-fn
-                    (configure {:instance-id instance-id}))
+                   (configure {:instance-id instance-id}))
        :restart-if-changed (plan-fn
-                             (ensure-service :instance-id instance-id))
+                            (ensure-service :instance-id instance-id))
        :init-replica-set (vary-meta
                           (plan-fn
-                            (init-replica-set {:instance-id instance-id}))
+                           (init-replica-set {:instance-id instance-id}))
                           merge
-                          (execute-and-flag-metadata ::replica-set))}
+                          (execute-and-flag-metadata ::replica-set))
+       :update-replica-set (plan-fn
+                            (update-replica-set {:instance-id instance-id}))}
       (service-phases facility {:instance-id instance-id} service))
-     :default-phases [:install :configure :restart-if-changed :init-replica-set]
+     :default-phases [:install :configure :restart-if-changed :init-replica-set
+                      :update-replica-set]
      :roles (set
              (filter identity
                      [(when-let [replica-set (-&gt; settings :config :replSet)]
                         (role-for-replica-set replica-set))
                       (if arbiter
                         ::arbiter
-                        ::data)])))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+                        ::data)])))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#pallet.crate.mongodb.mms" name="pallet.crate.mongodb.mms"><h1 class="project-name">pallet.crate.mongodb.mms</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Install MongoDB MMS
+See: http://mms.mongodb.com/help/monitoring/</p>
+</td><td class="codes"><pre class="brush: clojure">(ns pallet.crate.mongodb.mms
+  (:require
+   [clojure.string :as string]
+   [clojure.tools.logging :as log :refer [debugf]]
+   [pallet.actions :as actions :refer [directory exec-checked-script]]
+   [pallet.api :as api :refer [plan-fn]]
+   [pallet.crate
+    :refer [defplan assoc-settings defmethod-plan get-settings service-phases]]
+   [pallet.crate-install :as crate-install :refer [install-from]]
+   [pallet.crate.nohup]
+   [pallet.crate.service
+    :refer [supervisor-config supervisor-config-map] :as service]
+   [pallet.utils :refer [apply-map deep-merge]]
+   [pallet.version-dispatch
+    :refer [defmethod-version-plan defmulti-version-plan]]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def facility ::mms)
+(def mongomms-config-changed-flag &quot;MONGOMMS-CONFIG-CHANGED&quot;)</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(def default-mms-conf
+  {:supervisor :nohup
+   :service-name &quot;mongomms&quot;
+   :user &quot;mongomms&quot;
+   :owner &quot;mongomms&quot;
+   :group &quot;mongomms&quot;
+   ;; hmac only required for python 2.4.  Install via easy_install recommended.
+   :install-strategy :archive
+   :install-source {:local-file &quot;mms-monitoring-agent.tar.gz&quot;
+                    :owner &quot;mongomms&quot;
+                    :group &quot;mongomms&quot;}
+   :install-dir &quot;/opt/mongomms&quot;
+   :log-dir &quot;/var/log/mongomms&quot;
+   })</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmulti-version-plan default-settings [version])</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod-version-plan default-settings {:os :debian-base}
+  [os os-version version]
+  (merge default-mms-conf
+         {:dependencies {:pymongo {:install-strategy :packages
+                                   :packages [&quot;python-pymongo&quot;]}}}))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod-version-plan default-settings {:os :ubuntu}
+  [os os-version version]
+  (merge default-mms-conf
+         {:dependencies {:pymongo {:install-strategy :packages
+                                   :packages [&quot;python-pymongo&quot;]}}}))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod-version-plan default-settings {:os :rh-base}
+  [os os-version version]
+  (merge default-mms-conf
+         {:dependencies {:python-hashlib {:install-strategy :package-source
+                                          :repository {:id :epel
+                                                       :version &quot;6.8&quot;}
+                                          :packages [&quot;python-hashlib&quot;]}
+                         :python-pymongo {:install-strategy :package-source
+                                          :repository {:id :epel
+                                                       :version &quot;6.8&quot;}
+                                          :packages [&quot;python-pymongo&quot;]}}}))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod-version-plan default-settings {:os :amzn-linux}
+  [os os-version version]
+  (merge default-mms-conf
+         {:dependencies {:python-setuptools {:install-strategy :packages
+                                             :packages [&quot;python-setuptools&quot;
+                                                        &quot;gcc&quot;
+                                                        &quot;python-devel&quot;]}
+                         :python-pymongo {:install-strategy ::easy-install
+                                          :packages [&quot;pymongo&quot;]}}}))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod-plan crate-install/install-from ::easy-install
+  [{:keys [packages] :as settings}]
+  (exec-checked-script
+   (str &quot;Install via easy-install &quot; (string/join &quot;, &quot; packages))
+   (&quot;easy_install&quot; ~@packages)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod supervisor-config-map [facility :runit]
+  [_ {:keys [log-dir run-command service-name user] :as settings} options]
+  {:service-name service-name
+   :run-file
+   {:content (str &quot;#!/bin/sh\nexec 2&gt;&amp;1\nexec chpst -u &quot; user &quot; &quot; run-command)
+    :literal true}
+   :log-run-file
+   {:content (str &quot;#!/bin/sh\nexec chpst -u &quot; user &quot; svlogd -tt &quot; log-dir)
+    :literal true}})</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defmethod supervisor-config-map [facility :nohup]
+  [_ {:keys [run-command service-name user] :as settings} options]
+  {:service-name service-name
+   :run-file {:content run-command}
+   :user user})</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn computed-defaults
+  [{:keys [install-dir run-command] :as settings}]
+  (let [settings (if run-command
+                   settings
+                   (assoc settings :run-command
+                          (str &quot;python &quot; install-dir &quot;/agent.py&quot;)))]
+    settings))</pre></td></tr><tr><td class="docs"><p>Build the configuration settings by merging the user supplied ones
+  with the OS-related install settings and the default config settings
+  for MongoDB</p>
+</td><td class="codes"><pre class="brush: clojure">(defplan settings
+  [{:keys [version config] :as settings}
+   {:keys [instance-id] :as options}]
+  (let [settings (deep-merge
+                  (default-settings :latest)
+                  settings)
+        settings (computed-defaults settings)]
+    (debugf &quot;mongomms settings %s&quot; settings)
+    (assoc-settings facility settings {:instance-id instance-id})
+    (supervisor-config facility settings (or options {}))))</pre></td></tr><tr><td class="docs"><p>Create the mongomms user</p>
+
+<h1>User</h1>
+</td><td class="codes"><pre class="brush: clojure">(defplan user
+  [{:keys [instance-id] :as options}]
+  (let [{:keys [user owner group home]} (get-settings facility options)]
+    (assert (string? user) &quot;user must be a username string&quot;)
+    (assert (string? owner) &quot;owner must be a username string&quot;)
+    (actions/group group :system true)
+    (debugf &quot;mongomms create owner %s&quot; owner)
+    (when (not= owner user)
+      (actions/user owner :group group :system true))
+    (debugf &quot;mongomms create user %s&quot; user)
+    (actions/user
+     user :group group :system true :create-home true :shell :bash)))</pre></td></tr><tr><td class="docs"><h1>Install</h1>
+</td><td class="codes"><pre class="brush: clojure">(defplan install
+  [{:keys [instance-id]}]
+  (let [{:keys [dependencies log-dir owner group] :as settings}
+        (get-settings facility {:instance-id instance-id})]
+    (directory log-dir :owner owner :group group)
+    (doseq [[dependency dep-settings] dependencies]
+      (install-from dep-settings)))
+  (crate-install/install facility instance-id))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defplan configure
+  [{:keys [instance-id] :as options}]
+  (let [{:keys [conf-file config user]}
+        (get-settings facility {:instance-id instance-id})]))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defplan service
+  [&amp; {:keys [instance-id] :as options}]
+  (let [{:keys [supervision-options] :as settings}
+        (get-settings facility {:instance-id instance-id})]
+    (service/service settings (merge supervision-options
+                                     (dissoc options :instance-id)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defplan ensure-service
+  [&amp; {:keys [instance-id] :as options}]
+  (service :instance-id instance-id :if-stopped true)
+  (service :instance-id instance-id
+           :action :reload
+           :if-flag mongomms-config-changed-flag))</pre></td></tr><tr><td class="docs"><p>Return a server spec for MongoDB.  Keys under the :config settings
+will be written to the mongo .conf file.  To use a replica set,
+specify a replica set name in the :replSet config key. Specify
+<code>:arbiter true</code> for an arbiter node (which is distinguished by the
+arbiter role.)</p>
+</td><td class="codes"><pre class="brush: clojure">(defn server-spec
+  [{:keys [instance-id] :as settings}]
+  (let [settings (dissoc settings :instance-id)]
+    (api/server-spec
+     :phases
+     (merge
+      {:settings (plan-fn
+                   (pallet.crate.mongodb.mms/settings
+                    settings {:instance-id instance-id}))
+       :install (plan-fn
+                 (user {:instance-id instance-id})
+                 (install {:instance-id instance-id}))
+       :configure (plan-fn
+                   (configure {:instance-id instance-id})
+                   (service :action :enable :instance-id instance-id))
+       :restart-if-changed (plan-fn
+                             (ensure-service :instance-id instance-id))}
+      (service-phases facility {:instance-id instance-id} service))
+     :default-phases [:install :configure :restart-if-changed]
+     :roles #{:mms})))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/fogus/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
        SyntaxHighlighter.all()</script></body></html>
