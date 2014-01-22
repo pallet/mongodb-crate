@@ -9,8 +9,8 @@
    [pallet.api :as api :refer [execute-and-flag-metadata plan-fn]]
    [pallet.compute :refer [os-hierarchy]]
    [pallet.crate :refer [defplan assoc-settings defmulti-plan defmethod-plan
-                         get-node-settings get-settings nodes-with-role
-                         os-family service-phases target]]
+                         get-node-settings get-settings
+                         os-family service-phases target targets-with-role]]
    [pallet.crate-install :as crate-install]
    [pallet.crate.service :as service]
    [pallet.crate.upstart]
@@ -160,7 +160,7 @@
 (defn data-nodes
   "Return a sequence of mongo data nodes."
   [{:keys [config] :as settings}]
-  (nodes-with-role ::data))
+  (targets-with-role ::data))
 
 (defn replica-set-nodes
   "Return a tuple of [data-targets arbiter-target] for the specified
@@ -168,8 +168,8 @@
   [{:keys [config] :as settings}]
   (let [replica-set (:replSet config)
         role-kw (role-for-replica-set replica-set)]
-    (let [replica-nodes (nodes-with-role role-kw)
-          arbiter-nodes (nodes-with-role ::arbiter)
+    (let [replica-nodes (targets-with-role role-kw)
+          arbiter-nodes (targets-with-role ::arbiter)
           arbiter-node (first (intersection (set replica-nodes)
                                             (set arbiter-nodes)))
           data-nodes (disj (set replica-nodes) arbiter-node)]

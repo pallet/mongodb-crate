@@ -1,5 +1,5 @@
 {:dev
- {:dependencies [[com.palletops/pallet "0.8.0-RC.4" :classifier "tests"]
+ {:dependencies [[com.palletops/pallet "0.8.0-RC.7" :classifier "tests"]
                  [com.palletops/crates "0.1.1"]
                  [com.palletops/pallet-vmfest "0.3.0-beta.2"]
                  [ch.qos.logback/logback-classic "1.0.9"]]

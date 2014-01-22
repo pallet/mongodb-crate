@@ -8,4 +8,5 @@
  :tag-prefix ""
  :artifact-id "mongodb-crate"
  :source-path "src/pallet/crate/mongodb.clj"
- :versions [{:pallet "0.8.0-RC.4" :version "0.8.0-alpha.1"}]}
+ :versions [{:pallet "0.8.0-RC.7" :version "0.8.0-alpha.2"}
+            {:pallet "0.8.0-RC.4" :version "0.8.0-alpha.1"}]}
