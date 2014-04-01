@@ -1,3 +1,7 @@
+## 0.8.0-alpha.3
+
+- Add support for runit
+
 # 0.8.0-alpha.2
 
 - Add support for mongo MMS agent install

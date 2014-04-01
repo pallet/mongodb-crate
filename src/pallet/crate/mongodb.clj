@@ -12,9 +12,11 @@
                          get-node-settings get-settings
                          os-family service-phases target targets-with-role]]
    [pallet.crate-install :as crate-install]
-   [pallet.crate.service :as service]
+   [pallet.crate.service :as service
+    :refer [supervisor-config supervisor-config-map]]
    [pallet.crate.upstart]
    [pallet.node :refer [primary-ip private-ip]]
+   [pallet.stevedore :refer [fragment]]
    [pallet.utils :refer [apply-map deep-merge]]
    [pallet.version-dispatch
     :refer [defmethod-version-plan defmulti-version-plan]]))
@@ -103,6 +105,28 @@
                 (format "%s=%s\n" (name k) v))
               config)))
 
+(defn run-command
+  "Return a script command to run riemann."
+  [{:keys [conf-file] :as settings}]
+  (fragment ("mongod" -f ~conf-file)))
+
+(defmethod supervisor-config-map [facility :runit]
+  [_ {:keys [run-command service-name user] :as settings} options]
+  {:service-name service-name
+   :run-file {:content (str "#!/bin/sh\nexec chpst -u " user " " run-command)}})
+
+(defmethod supervisor-config-map [facility :upstart]
+  [_ {:keys [run-command service-name user] :as settings} options]
+  {:service-name service-name
+   :exec run-command
+   :setuid user})
+
+(defmethod supervisor-config-map [facility :nohup]
+  [_ {:keys [run-command service-name user] :as settings} options]
+  {:service-name service-name
+   :run-file {:content run-command}
+   :user user})
+
 (defplan settings
   "Build the configuration settings by merging the user supplied ones
   with the OS-related install settings and the default config settings
@@ -112,9 +136,12 @@
   (let [settings (deep-merge
                   {:version (or version :latest)}
                   (default-settings :latest)
-                  settings)]
+                  settings)
+        settings (update-in settings [:run-command]
+                            #(or % (run-command settings)))]
     (debugf "mongodb settings %s" settings)
-    (assoc-settings facility settings {:instance-id instance-id})))
+    (assoc-settings facility settings {:instance-id instance-id})
+    (supervisor-config facility settings (or options {}))))
 
 (defplan install
   [{:keys [instance-id]}]
@@ -298,7 +325,8 @@ specify a replica set name in the :replSet config key. Specify
 `:arbiter true` for an arbiter node (which is distinguished by the
 arbiter role.)"
   [{:keys [arbiter instance-id] :as settings}]
-  (let [settings (dissoc settings :instance-id)]
+  (let [settings (dissoc settings :instance-id)
+        options {:instance-id instance-id}]
     (api/server-spec
      ;; TODO - needs an adjust-replica-set to run on resize of
      ;; replica set
@@ -306,21 +334,22 @@ arbiter role.)"
      (merge
       {:settings (plan-fn
                   (pallet.crate.mongodb/settings
-                   settings {:instance-id instance-id}))
+                   settings options))
        :install (plan-fn
-                 (install {:instance-id instance-id}))
+                 (install options))
        :configure (plan-fn
-                   (configure {:instance-id instance-id}))
+                   (configure options)
+                   (apply-map service :action :enable options))
        :restart-if-changed (plan-fn
                             (ensure-service :instance-id instance-id))
        :init-replica-set (vary-meta
                           (plan-fn
-                           (init-replica-set {:instance-id instance-id}))
+                           (init-replica-set options))
                           merge
                           (execute-and-flag-metadata ::replica-set))
        :update-replica-set (plan-fn
-                            (update-replica-set {:instance-id instance-id}))}
-      (service-phases facility {:instance-id instance-id} service))
+                            (update-replica-set options))}
+      (service-phases facility options service))
      :default-phases [:install :configure :restart-if-changed :init-replica-set
                       :update-replica-set]
      :roles (set
