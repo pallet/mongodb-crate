@@ -1,3 +1,7 @@
+## 0.8.0-alpha.4
+
+- Fix package names for redhat based distros
+
 ## 0.8.0-alpha.3
 
 - Add support for runit
