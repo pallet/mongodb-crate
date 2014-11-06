@@ -64,7 +64,7 @@ See: http://mms.mongodb.com/help/monitoring/"
   [os os-version version]
   (merge default-mms-conf
          {:dependencies {:python-setuptools {:install-strategy :packages
-                                             :packages ["python-setuptools"
+                                             :packages ["python26-setuptools"
                                                         "gcc"
                                                         "python-devel"]}
                          :python-pymongo {:install-strategy ::easy-install

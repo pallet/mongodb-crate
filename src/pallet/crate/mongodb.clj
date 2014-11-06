@@ -87,7 +87,7 @@
    :service-name "mongod"
    :supervisor :initd
    :install-strategy :package-source
-   :packages ["mongo-10gen" "mongo-10gen-server"]
+   :packages ["mongodb-org" "mongodb-org-server"]
    :package-source
    {:name "mongodb"
     :yum
@@ -96,6 +96,7 @@
      :name "MongoDB Repository"}}
    :conf-file "/etc/mongod.conf"})
 
+;; TODO amazn linux uses /var/run/mongodb as pidfilepath
 
 (defn to-config-file
   "Generate the .config file contents out of a map of config option, value"
