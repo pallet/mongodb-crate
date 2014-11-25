@@ -12,6 +12,7 @@
                          get-node-settings get-settings
                          os-family service-phases target targets-with-role]]
    [pallet.crate-install :as crate-install]
+   [pallet.crate.network-service :as network-service]
    [pallet.crate.service :as service
     :refer [supervisor-config supervisor-config-map]]
    [pallet.crate.upstart]
@@ -254,6 +255,7 @@
                          (format initiate-script replica-set
                                  (ip-port (target) instance-id))
                          \newline))
+          (network-service/wait-for-port-listen (:port config))
           (exec-checked-script
            (str "Initialise replica set " replica-set)
            ("mongo" "--port" ~(:port config) "init-replica-set.js")))))))
