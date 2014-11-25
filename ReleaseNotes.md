@@ -1,3 +1,8 @@
+## 0.8.0-alpha.5
+
+- Ensure mongo is up before initialising replica set
+  When initialising the replica set, ensure mongo is up first.
+
 ## 0.8.0-alpha.4
 
 - Fix package names for redhat based distros
