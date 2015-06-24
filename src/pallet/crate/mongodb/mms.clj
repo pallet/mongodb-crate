@@ -66,7 +66,7 @@ See: http://mms.mongodb.com/help/monitoring/"
          {:dependencies {:python-setuptools {:install-strategy :packages
                                              :packages ["python26-setuptools"
                                                         "gcc"
-                                                        "python-devel"]}
+                                                        "python26-devel"]}
                          :python-pymongo {:install-strategy ::easy-install
                                           :packages ["pymongo"]}}}))
 

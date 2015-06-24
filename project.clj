@@ -1,4 +1,4 @@
-(defproject com.palletops/mongodb-crate "0.8.0-alpha.5"
+(defproject com.palletops/mongodb-crate "0.8.0-alpha.6"
   :description "Pallet crate to install, configure and use mongodb"
   :url "http://palletops.com/pallet"
   :license {:name "Eclipse Public License"
