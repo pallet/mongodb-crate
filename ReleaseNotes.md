@@ -1,3 +1,7 @@
+## 0.8.0-alpha.6
+
+- Fix python-devel dependency on amazon linux
+
 ## 0.8.0-alpha.5
 
 - Ensure mongo is up before initialising replica set
