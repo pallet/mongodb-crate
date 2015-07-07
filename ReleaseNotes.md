@@ -1,3 +1,11 @@
+## 0.8.0-alpha.7
+
+- Update to pallet 0.8.2
+
+- Ensure initialisation doesn't run when adding node
+  When adding a mongodnb node to an existing cluster, ensure that the 
+  initialisation doesn't run by checking for replica-set node metadata.
+
 ## 0.8.0-alpha.6
 
 - Fix python-devel dependency on amazon linux
