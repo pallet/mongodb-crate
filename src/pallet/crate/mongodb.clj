@@ -8,6 +8,7 @@
                            package-source package remote-file]]
    [pallet.api :as api :refer [execute-and-flag-metadata plan-fn]]
    [pallet.compute :refer [os-hierarchy]]
+   [pallet.core.api :refer [has-state-flag?]]
    [pallet.crate :refer [defplan assoc-settings defmulti-plan defmethod-plan
                          get-node-settings get-settings
                          os-family service-phases target targets-with-role]]
@@ -16,7 +17,7 @@
    [pallet.crate.service :as service
     :refer [supervisor-config supervisor-config-map]]
    [pallet.crate.upstart]
-   [pallet.node :refer [primary-ip private-ip]]
+   [pallet.node :refer [primary-ip private-ip tag tags]]
    [pallet.stevedore :refer [fragment]]
    [pallet.utils :refer [apply-map deep-merge]]
    [pallet.version-dispatch
@@ -235,6 +236,11 @@
           data-nodes (disj (set replica-nodes) arbiter-node)]
       [data-nodes arbiter-node])))
 
+(defn has-replicaset-metadata?
+  "Predicate for a node having ::replica-set metadata."
+  [node]
+  ((has-state-flag? :replica-set) node))
+
 (defplan init-replica-set
   [{:keys [instance-id] :as opts}]
   (let [{:keys [config] :as settings}
@@ -247,18 +253,28 @@
      "init-replica-set called on settings with no :replica-set defined.")
     (when replica-set
       (let [[data-nodes arbiter-node] (replica-set-nodes settings)]
-        (debugf "init-replica-set arbiter-node %s" (boolean arbiter-node))
-        (on-one-node [role-kw ::data]
-          (remote-file
-           "init-replica-set.js"
-           :content (str report-fn
-                         (format initiate-script replica-set
-                                 (ip-port (target) instance-id))
-                         \newline))
-          (network-service/wait-for-port-listen (:port config))
-          (exec-checked-script
-           (str "Initialise replica set " replica-set)
-           ("mongo" "--port" ~(:port config) "init-replica-set.js")))))))
+        (debugf "init-replica-set data node count: %s, arbiter-node %s"
+                (count data-nodes)
+                (boolean arbiter-node))
+        (when (->>
+               (conj data-nodes arbiter-node)
+               (remove nil?)
+               (filter has-replicaset-metadata?)
+               empty?)
+          (clojure.tools.logging/debugf "init-replica-set running")
+          (on-one-node [role-kw ::data]
+            (remote-file
+             "init-replica-set.js"
+             :content (str report-fn
+                           (format initiate-script replica-set
+                                   (ip-port (target) instance-id))
+                           \newline))
+            (network-service/wait-for-port-listen
+             (:port config)
+             :max-retries 10)
+            (exec-checked-script
+             (str "Initialise replica set " replica-set)
+             ("mongo" "--port" ~(:port config) "init-replica-set.js"))))))))
 
 (defplan update-replica-set
   "Ensure that all mongo nodes are registered in the replica set."
