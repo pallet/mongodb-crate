@@ -62,3 +62,25 @@
                           ("service" networking restart))))
             :test (plan-fn (wait-for-port-listen 30000))}
    :phases-meta {:install (execute-and-flag-metadata :install)}))
+
+
+(deftest config-file
+
+  (test/are [mapconfig expected-text]
+
+    (=  (mongodb/to-config-file mapconfig) expected-text)
+
+    {:name "value"}
+    "name=value\n"
+
+    (sorted-map :name "value" :setParameter "logLevel=4")
+    (str "name=value\n"
+         "setParameter=logLevel=4\n")
+
+
+    ;; Vector values expand to multiple lines of the same configuration key
+    (sorted-map :name "value" :setParameter ["logLevel=4" "textSearchEnabled=true"])
+    (str "name=value\n"
+         "setParameter=logLevel=4\n"
+         "setParameter=textSearchEnabled=true\n")) )
+
