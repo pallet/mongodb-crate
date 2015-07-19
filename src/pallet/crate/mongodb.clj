@@ -33,7 +33,6 @@
   {:dbpath "/var/lib/mongodb"
    :logpath "/var/log/mongodb/mongodb.log"
    :logappend true
-   :rest true
    :port 27017
    ;; :bind-ip will be bound to local ip if possible
    :nohttpinterface true})
